@@ -1,0 +1,4252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"
+  >
+
+  <meta name="theme-color" content="#020711">
+
+  <title>VELOCITY ZERO</title>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.1/examples/jsm/"
+    }
+  }
+  </script>
+
+  <style>
+    :root {
+      --cyan: #38e4ff;
+      --border: rgba(56, 228, 255, 0.65);
+      --panel: rgba(3, 14, 26, 0.9);
+      --text: #ecfbff;
+      --muted: #9cbcc8;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #020711;
+      color: var(--text);
+      font-family:
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+      overscroll-behavior: none;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      color: inherit;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible {
+      outline: 2px solid white;
+      outline-offset: 2px;
+    }
+
+    #game,
+    #effects {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    #game {
+      touch-action: none;
+    }
+
+    #effects {
+      z-index: 40;
+      pointer-events: none;
+    }
+
+    .screen {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding:
+        max(16px, env(safe-area-inset-top))
+        max(16px, env(safe-area-inset-right))
+        max(16px, env(safe-area-inset-bottom))
+        max(16px, env(safe-area-inset-left));
+    }
+
+    .screen.active {
+      display: flex;
+    }
+
+    #loading {
+      z-index: 100;
+      background:
+        radial-gradient(circle at 50% 35%, #103149, #020711 70%);
+    }
+
+    #title {
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 50% 30%, #103c5b, #020711 70%);
+    }
+
+    #title::before {
+      content: "";
+      position: absolute;
+      left: -50%;
+      right: -50%;
+      bottom: -60%;
+      height: 110%;
+      background-image:
+        linear-gradient(
+          rgba(38, 201, 255, 0.4) 1px,
+          transparent 1px
+        ),
+        linear-gradient(
+          90deg,
+          rgba(38, 201, 255, 0.4) 1px,
+          transparent 1px
+        );
+      background-size: 60px 60px;
+      transform: perspective(380px) rotateX(64deg);
+      animation: grid-scroll 3s linear infinite;
+      -webkit-mask-image: linear-gradient(transparent, black 30%);
+      mask-image: linear-gradient(transparent, black 30%);
+      pointer-events: none;
+    }
+
+    @keyframes grid-scroll {
+      from {
+        background-position: 0 0;
+      }
+
+      to {
+        background-position: 0 60px;
+      }
+    }
+
+    .center {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+    }
+
+    .panel {
+      position: relative;
+      width: min(760px, 100%);
+      max-height: 100%;
+      overflow-y: auto;
+      padding: clamp(18px, 3vw, 30px);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--panel);
+      box-shadow: 0 0 35px rgba(0, 190, 255, 0.13);
+      backdrop-filter: blur(12px);
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+    }
+
+    h1,
+    h2,
+    p {
+      margin-top: 0;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+      font-size: clamp(44px, 10vw, 100px);
+      line-height: 0.92;
+      font-weight: 950;
+      font-style: italic;
+      letter-spacing: -0.06em;
+      text-shadow: 0 0 28px rgba(30, 205, 255, 0.65);
+    }
+
+    h2 {
+      margin-bottom: 10px;
+      font-size: clamp(22px, 4vw, 32px);
+      letter-spacing: 0.08em;
+    }
+
+    .eyebrow {
+      color: var(--cyan);
+      font-size: 11px;
+      font-weight: 850;
+      letter-spacing: 0.23em;
+      text-transform: uppercase;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    svg {
+      width: 22px;
+      height: 22px;
+      flex: none;
+      fill: none;
+      stroke: var(--cyan);
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      filter: drop-shadow(0 0 5px rgba(56, 228, 255, 0.75));
+    }
+
+    .button {
+      min-height: 46px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 15px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: linear-gradient(
+        135deg,
+        rgba(14, 51, 72, 0.94),
+        rgba(3, 15, 27, 0.98)
+      );
+      box-shadow: 0 0 16px rgba(0, 195, 255, 0.13);
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    .button:active {
+      transform: scale(0.97);
+    }
+
+    .button.selected {
+      background: rgba(18, 107, 137, 0.85);
+      box-shadow: 0 0 20px rgba(56, 228, 255, 0.35);
+    }
+
+    .button-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .button-list .button {
+      width: 100%;
+      min-height: 52px;
+    }
+
+    .progress {
+      width: min(340px, 80vw);
+      height: 7px;
+      margin: 20px auto 10px;
+      overflow: hidden;
+      border-radius: 10px;
+      background: #17313d;
+    }
+
+    #loading-fill {
+      width: 0%;
+      height: 100%;
+      background: var(--cyan);
+      box-shadow: 0 0 15px var(--cyan);
+      transition: width 0.15s ease;
+    }
+
+    #loading-message {
+      min-height: 38px;
+      max-width: 440px;
+      margin: 0 auto 16px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    #retry {
+      display: none;
+    }
+
+    .section-label {
+      margin: 16px 0 8px;
+      color: #b8d8e4;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .difficulty-options,
+    .track-options {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .track-options {
+      margin: 8px 0 14px;
+    }
+
+    .track-option {
+      min-width: 0;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: flex-start;
+      padding: 8px;
+      font-size: 10px;
+      text-align: left;
+    }
+
+    .track-option canvas {
+      width: 100%;
+      height: 55px;
+      border-radius: 5px;
+      background: #04111d;
+    }
+
+    .track-option strong {
+      margin-top: 3px;
+      font-size: 11px;
+    }
+
+    .track-option small {
+      color: #aecbd5;
+      font-size: 10px;
+      line-height: 1.3;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .tag {
+      width: fit-content;
+      margin-top: 5px;
+      padding: 3px 5px;
+      border-radius: 4px;
+      font-size: 9px;
+    }
+
+    .tag.easy {
+      background: #1a694c;
+    }
+
+    .tag.hard {
+      background: #8b5f13;
+    }
+
+    .tag.extreme {
+      background: #a32f48;
+    }
+
+    .car-selector {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin: 10px 0;
+    }
+
+    #car-name {
+      min-width: 0;
+      flex: 1;
+      text-align: center;
+      font-size: clamp(13px, 2.5vw, 17px);
+      font-weight: 900;
+    }
+
+    #car-number {
+      margin-top: 4px;
+      color: var(--cyan);
+      font-size: 10px;
+      letter-spacing: 0.12em;
+    }
+
+    #car-preview {
+      width: 100%;
+      height: clamp(135px, 22vh, 210px);
+      display: block;
+      border: 1px solid rgba(56, 228, 255, 0.32);
+      border-radius: 10px;
+      background: radial-gradient(circle, #12384d, #030c16 75%);
+    }
+
+    .settings {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .field {
+      display: grid;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 850;
+      letter-spacing: 0.1em;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      min-height: 44px;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #071927;
+      color: white;
+    }
+
+    .setup-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    #builder-ui {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      pointer-events: none;
+    }
+
+    #builder-ui.active {
+      display: block;
+    }
+
+    .builder-header,
+    .builder-tools,
+    .builder-footer {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      pointer-events: auto;
+    }
+
+    .builder-header {
+      top: max(10px, env(safe-area-inset-top));
+      left: max(10px, env(safe-area-inset-left));
+      right: max(10px, env(safe-area-inset-right));
+      justify-content: space-between;
+    }
+
+    .builder-tools {
+      left: max(10px, env(safe-area-inset-left));
+      bottom: max(12px, env(safe-area-inset-bottom));
+      max-width: 70%;
+      flex-wrap: wrap;
+    }
+
+    .builder-footer {
+      right: max(10px, env(safe-area-inset-right));
+      bottom: max(12px, env(safe-area-inset-bottom));
+    }
+
+    .builder-label {
+      max-width: min(55vw, 420px);
+      padding: 9px 11px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    #hud {
+      position: fixed;
+      inset: 0;
+      z-index: 15;
+      display: none;
+      pointer-events: none;
+    }
+
+    #hud.active {
+      display: block;
+    }
+
+    .hud-box {
+      border: 1px solid rgba(56, 228, 255, 0.55);
+      border-radius: 10px;
+      background: rgba(2, 12, 22, 0.76);
+      box-shadow: 0 0 18px rgba(0, 190, 255, 0.1);
+      backdrop-filter: blur(8px);
+    }
+
+    #timing {
+      position: absolute;
+      top: max(10px, env(safe-area-inset-top));
+      left: max(10px, env(safe-area-inset-left));
+      min-width: 120px;
+      padding: 9px 12px;
+    }
+
+    #lap {
+      color: var(--cyan);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.13em;
+    }
+
+    #timer {
+      margin-top: 4px;
+      font-size: 21px;
+      font-weight: 850;
+      font-variant-numeric: tabular-nums;
+    }
+
+    #race-status {
+      position: absolute;
+      top: max(12px, env(safe-area-inset-top));
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 8px 12px;
+      font-size: 10px;
+      font-weight: 850;
+      letter-spacing: 0.1em;
+      white-space: nowrap;
+    }
+
+    #boost-panel {
+      position: absolute;
+      top: max(10px, env(safe-area-inset-top));
+      right: max(10px, env(safe-area-inset-right));
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+    }
+
+    #boost-track {
+      width: 12px;
+      height: 70px;
+      display: flex;
+      align-items: flex-end;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #071827;
+    }
+
+    #boost-fill {
+      width: 100%;
+      height: 0%;
+      background: linear-gradient(#c3fbff, #00aaff);
+      box-shadow: 0 0 12px #00caff;
+    }
+
+    #boost-label {
+      color: var(--cyan);
+      font-size: 10px;
+      font-weight: 900;
+    }
+
+    #boost-seconds {
+      margin-top: 4px;
+      font-size: 15px;
+      font-weight: 850;
+    }
+
+    #speed-panel {
+      position: absolute;
+      right: max(10px, env(safe-area-inset-right));
+      bottom: max(
+        100px,
+        calc(env(safe-area-inset-bottom) + 95px)
+      );
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 11px;
+    }
+
+    #speed {
+      font-size: clamp(30px, 6vw, 48px);
+      line-height: 0.9;
+      font-weight: 950;
+      font-style: italic;
+      font-variant-numeric: tabular-nums;
+    }
+
+    #speed-unit {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 9px;
+      font-weight: 850;
+      letter-spacing: 0.16em;
+    }
+
+    #gear {
+      min-width: 40px;
+      padding: 7px;
+      border: 1px solid var(--cyan);
+      border-radius: 7px;
+      color: var(--cyan);
+      font-size: 22px;
+      font-weight: 900;
+      text-align: center;
+    }
+
+    .control {
+      position: absolute;
+      width: clamp(52px, 9vw, 70px);
+      height: clamp(52px, 9vw, 70px);
+      display: grid;
+      place-items: center;
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      background: rgba(3, 20, 34, 0.84);
+      box-shadow: 0 0 18px rgba(0, 190, 255, 0.15);
+      pointer-events: auto;
+      touch-action: none;
+    }
+
+    .control.pressed,
+    .control:active {
+      background: rgba(18, 112, 142, 0.9);
+    }
+
+    .control svg {
+      width: 27px;
+      height: 27px;
+    }
+
+    #gas {
+      right: max(14px, env(safe-area-inset-right));
+      bottom: max(15px, env(safe-area-inset-bottom));
+    }
+
+    #brake {
+      right: max(
+        90px,
+        calc(env(safe-area-inset-right) + 76px)
+      );
+      bottom: max(15px, env(safe-area-inset-bottom));
+    }
+
+    #boost {
+      right: max(
+        166px,
+        calc(env(safe-area-inset-right) + 152px)
+      );
+      bottom: max(15px, env(safe-area-inset-bottom));
+    }
+
+    #camera-button,
+    #reset,
+    #exit {
+      top: max(
+        105px,
+        calc(env(safe-area-inset-top) + 95px)
+      );
+      width: 46px;
+      height: 46px;
+    }
+
+    #camera-button {
+      right: max(12px, env(safe-area-inset-right));
+    }
+
+    #reset {
+      right: max(
+        64px,
+        calc(env(safe-area-inset-right) + 52px)
+      );
+    }
+
+    #exit {
+      right: max(
+        116px,
+        calc(env(safe-area-inset-right) + 104px)
+      );
+    }
+
+    #wheel {
+      position: absolute;
+      left: max(16px, env(safe-area-inset-left));
+      bottom: max(16px, env(safe-area-inset-bottom));
+      width: clamp(105px, 21vw, 160px);
+      height: clamp(105px, 21vw, 160px);
+      display: grid;
+      place-items: center;
+      border: 2px solid var(--border);
+      border-radius: 50%;
+      background: rgba(3, 16, 28, 0.65);
+      box-shadow: 0 0 24px rgba(0, 180, 255, 0.18);
+      pointer-events: auto;
+      touch-action: none;
+    }
+
+    #wheel-inner {
+      position: relative;
+      width: 72%;
+      height: 72%;
+      border: 8px solid rgba(180, 234, 247, 0.88);
+      border-radius: 50%;
+    }
+
+    #wheel-inner::before,
+    #wheel-inner::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 48%;
+      height: 6px;
+      background: #9edbe8;
+      transform-origin: left center;
+    }
+
+    #wheel-inner::before {
+      transform: rotate(25deg);
+    }
+
+    #wheel-inner::after {
+      transform: rotate(155deg);
+    }
+
+    #wheel-hub {
+      position: absolute;
+      width: 27%;
+      height: 27%;
+      border: 2px solid var(--cyan);
+      border-radius: 50%;
+      background: #163b4d;
+    }
+
+    #notice {
+      position: fixed;
+      left: 50%;
+      bottom: 27%;
+      z-index: 50;
+      transform: translateX(-50%);
+      max-width: 90vw;
+      padding: 9px 14px;
+      border: 1px solid var(--cyan);
+      border-radius: 8px;
+      background: rgba(2, 12, 22, 0.95);
+      font-size: 11px;
+      font-weight: 850;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      pointer-events: none;
+      text-align: center;
+    }
+
+    #notice.show {
+      opacity: 1;
+    }
+
+    #result-screen {
+      z-index: 30;
+      background: rgba(2, 7, 17, 0.76);
+    }
+
+    .result-panel {
+      text-align: center;
+    }
+
+    #result-title {
+      margin: 8px 0;
+      font-size: clamp(36px, 8vw, 70px);
+      font-weight: 950;
+      font-style: italic;
+      letter-spacing: -0.05em;
+    }
+
+    #result-title.win {
+      color: #ffd36a;
+      text-shadow: 0 0 30px rgba(255, 211, 106, 0.65);
+    }
+
+    #result-details {
+      color: #c2d8e2;
+      white-space: pre-line;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 560px) {
+      .track-option canvas {
+        height: 42px;
+      }
+
+      .track-option small {
+        font-size: 9px;
+      }
+
+      .builder-tools .button,
+      .builder-footer .button {
+        padding: 8px;
+        font-size: 9px;
+      }
+
+      #race-status {
+        top: 78px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="game"></canvas>
+  <canvas id="effects"></canvas>
+
+  <div id="loading" class="screen active">
+    <div class="center">
+      <div class="eyebrow">Preparing race systems</div>
+      <h2>LOADING VELOCITY ZERO</h2>
+
+      <div class="progress">
+        <div id="loading-fill"></div>
+      </div>
+
+      <p id="loading-message">Starting download...</p>
+
+      <button id="retry" class="button">
+        <svg viewBox="0 0 24 24">
+          <path d="M4 11a8 8 0 1 1 2 6M4 5v6h6"></path>
+        </svg>
+        RETRY
+      </button>
+    </div>
+  </div>
+
+  <div id="title" class="screen">
+    <div class="center">
+      <div class="eyebrow">Next-generation racing</div>
+      <h1>VELOCITY<br>ZERO</h1>
+      <p class="muted">TOUCH. ACCELERATE. DOMINATE.</p>
+
+      <button id="start-button" class="button">
+        <svg viewBox="0 0 24 24">
+          <path d="M8 5v14l11-7z"></path>
+        </svg>
+        TAP TO START
+      </button>
+    </div>
+  </div>
+
+  <div id="mode-screen" class="screen">
+    <div class="panel">
+      <div class="eyebrow">Select session</div>
+      <h2>GAME MODE</h2>
+
+      <div class="button-list">
+        <button class="button" data-mode="race">
+          <svg viewBox="0 0 24 24">
+            <path d="M4 19V4M4 5c4-3 7 3 11 0s5 0 5 0v8s-2-3-5 0-7-3-11 0"></path>
+          </svg>
+          RACE VS AI
+        </button>
+
+        <button class="button" data-mode="trial">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="13" r="8"></circle>
+            <path d="M12 9v4l3 2M9 2h6M12 2v3"></path>
+          </svg>
+          TIME TRIAL
+        </button>
+
+        <button class="button" data-mode="builder">
+          <svg viewBox="0 0 24 24">
+            <path d="M4 20V4h16M4 16h6v-5h6V6h4"></path>
+          </svg>
+          TRACK BUILDER
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="setup-screen" class="screen">
+    <div class="panel">
+      <div class="eyebrow">Configure race</div>
+      <h2>RACE SETUP</h2>
+
+      <div class="section-label">Track difficulty</div>
+      <div id="difficulty-options" class="difficulty-options"></div>
+
+      <div class="section-label">Choose a track</div>
+      <div id="track-options" class="track-options"></div>
+
+      <div class="section-label">Choose your car</div>
+
+      <div class="car-selector">
+        <button
+          id="previous-car"
+          class="button"
+          aria-label="Previous car"
+        >
+          <svg viewBox="0 0 24 24">
+            <path d="M15 5l-7 7 7 7"></path>
+          </svg>
+        </button>
+
+        <div id="car-name">
+          <div id="car-title"></div>
+          <div id="car-number"></div>
+        </div>
+
+        <button
+          id="next-car"
+          class="button"
+          aria-label="Next car"
+        >
+          <svg viewBox="0 0 24 24">
+            <path d="M9 5l7 7-7 7"></path>
+          </svg>
+        </button>
+      </div>
+
+      <canvas
+        id="car-preview"
+        aria-label="Selected car preview"
+      ></canvas>
+
+      <div class="muted" style="margin-top: 6px;">
+        Car names are menu labels; model appearance may differ.
+      </div>
+
+      <div class="settings">
+        <label class="field">
+          AI DIFFICULTY
+          <select id="ai-difficulty">
+            <option value="easy">Easy</option>
+            <option value="medium" selected>Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </label>
+
+        <label class="field">
+          LAPS: 1–50
+          <input id="laps" type="number" min="1" max="50" value="3">
+        </label>
+      </div>
+
+      <p class="muted" style="margin: 10px 0 0;">
+        Touching another car is safe. Three separate crashes into
+        track edges will destroy your car.
+      </p>
+
+      <div class="setup-actions">
+        <button id="setup-back" class="button">
+          <svg viewBox="0 0 24 24">
+            <path d="M15 5l-7 7 7 7"></path>
+          </svg>
+          BACK
+        </button>
+
+        <button id="race-start" class="button">
+          <svg viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z"></path>
+          </svg>
+          START RACE
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="builder-ui">
+    <div class="builder-header">
+      <div id="builder-message" class="builder-label"></div>
+
+      <button id="builder-back" class="button">
+        <svg viewBox="0 0 24 24">
+          <path d="M15 5l-7 7 7 7"></path>
+        </svg>
+        BACK
+      </button>
+    </div>
+
+    <div class="builder-tools">
+      <button class="button piece" data-piece="straight">
+        <svg viewBox="0 0 24 24">
+          <path d="M8 20V4M16 20V4"></path>
+        </svg>
+        STRAIGHT
+      </button>
+
+      <button class="button piece" data-piece="left">
+        <svg viewBox="0 0 24 24">
+          <path d="M18 20v-7a7 7 0 0 0-7-7H5M8 3L5 6l3 3"></path>
+        </svg>
+        LEFT
+      </button>
+
+      <button class="button piece" data-piece="right">
+        <svg viewBox="0 0 24 24">
+          <path d="M6 20v-7a7 7 0 0 1 7-7h6M16 3l3 3-3 3"></path>
+        </svg>
+        RIGHT
+      </button>
+
+      <button id="builder-undo" class="button">
+        <svg viewBox="0 0 24 24">
+          <path d="M9 6L4 11l5 5M4 11h9a6 6 0 0 1 6 6"></path>
+        </svg>
+        UNDO
+      </button>
+    </div>
+
+    <div class="builder-footer">
+      <button id="builder-race" class="button">
+        <svg viewBox="0 0 24 24">
+          <path d="M8 5v14l11-7z"></path>
+        </svg>
+        RACE TRACK
+      </button>
+    </div>
+  </div>
+
+  <div id="hud">
+    <div id="timing" class="hud-box">
+      <div id="lap">LAP 1/3</div>
+      <div id="timer">00:00.0</div>
+    </div>
+
+    <div id="race-status" class="hud-box">GET READY</div>
+
+    <div id="boost-panel" class="hud-box">
+      <div id="boost-track">
+        <div id="boost-fill"></div>
+      </div>
+
+      <div>
+        <div id="boost-label">BOOST</div>
+        <div id="boost-seconds">0.0s</div>
+      </div>
+    </div>
+
+    <div id="speed-panel" class="hud-box">
+      <div>
+        <div id="speed">0</div>
+        <div id="speed-unit">KM/H</div>
+      </div>
+
+      <div id="gear">1</div>
+    </div>
+
+    <div id="wheel" aria-label="Steering wheel">
+      <div id="wheel-inner"></div>
+      <div id="wheel-hub"></div>
+    </div>
+
+    <button id="gas" class="control" aria-label="Accelerate">
+      <svg viewBox="0 0 24 24">
+        <path d="M5 20V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v15M4 20h12M7 7h6v5H7z"></path>
+        <path d="M15 9h2l2 2v6a2 2 0 0 0 2 2V8l-3-3"></path>
+      </svg>
+    </button>
+
+    <button id="brake" class="control" aria-label="Brake">
+      <svg viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="8"></circle>
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M5 7l-2 2v6l2 2M19 7l2 2v6l-2 2"></path>
+      </svg>
+    </button>
+
+    <button id="boost" class="control" aria-label="Boost">
+      <svg viewBox="0 0 24 24">
+        <path d="M13 2c1 5-4 6-2 10 1-2 3-3 4-5 4 3 5 6 4 9a7 7 0 0 1-14 0c0-3 2-6 5-8"></path>
+        <path d="M12 14c-2 2-2 4 0 5 2-1 2-3 0-5z"></path>
+      </svg>
+    </button>
+
+    <button
+      id="camera-button"
+      class="control"
+      aria-label="Change camera distance"
+    >
+      <svg viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="8"></circle>
+        <circle cx="12" cy="12" r="4"></circle>
+      </svg>
+    </button>
+
+    <button id="reset" class="control" aria-label="Reset car">
+      <svg viewBox="0 0 24 24">
+        <path d="M4 11a8 8 0 1 1 2 6M4 5v6h6"></path>
+      </svg>
+    </button>
+
+    <button id="exit" class="control" aria-label="Exit race">
+      <svg viewBox="0 0 24 24">
+        <path d="M10 4H5v16h5M14 8l4 4-4 4M8 12h10"></path>
+      </svg>
+    </button>
+  </div>
+
+  <div id="result-screen" class="screen">
+    <div class="panel result-panel">
+      <div id="result-eyebrow" class="eyebrow">Race complete</div>
+      <div id="result-title">FINISHED</div>
+      <div id="result-details"></div>
+
+      <div class="setup-actions">
+        <button id="result-menu" class="button">TRACK MENU</button>
+        <button id="result-retry" class="button">RACE AGAIN</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="notice"></div>
+
+  <script type="module">
+    import * as THREE from "three";
+
+    import {
+      GLTFLoader
+    } from "three/addons/loaders/GLTFLoader.js";
+
+    const $ = id => document.getElementById(id);
+
+    const CAR_URL = "https://files.catbox.moe/1l65qk.glb";
+
+    /*
+     * Kept from the last complete version.
+     */
+    const CAR_NOSE_ROTATION = Math.PI / 2;
+
+    const STORAGE_KEY = "velocity-zero-progress-v1";
+
+    const CAR_NAMES = [
+      "Red Bull Racing RB20",
+      "Ferrari SF-24",
+      "McLaren MCL38",
+      "Mercedes-AMG F1 W15",
+      "Aston Martin AMR24",
+      "Alpine A524",
+      "Williams FW46",
+      "RB VCARB 01",
+      "Sauber C44",
+      "Haas VF-24",
+      "McLaren MP4/4"
+    ];
+
+    /*
+     * Tunnels now have continuous walls and a roof.
+     * Several tracks have dark, underground-style tunnels.
+     */
+    const TRACKS = [
+      {
+        id: "neon-ridge",
+        name: "NEON RIDGE",
+        difficulty: "easy",
+        description: "Wide corners and a dark underground tunnel.",
+        width: 22,
+        sky: 0x7899ac,
+        ground: 0x253b35,
+        edge: 0x38e4ff,
+        tunnels: [[0.24, 0.32]],
+        jumps: [],
+        points: [
+          [-180, 0, -40],
+          [-145, 5, -145],
+          [-45, 12, -180],
+          [80, 8, -165],
+          [170, 2, -75],
+          [180, 0, 50],
+          [95, 10, 150],
+          [-30, 15, 165],
+          [-145, 4, 105]
+        ]
+      },
+      {
+        id: "coastal-loop",
+        name: "COASTAL LOOP",
+        difficulty: "easy",
+        description: "A fast, open seaside circuit.",
+        width: 24,
+        sky: 0x9bc8dc,
+        ground: 0x557263,
+        edge: 0x77edff,
+        tunnels: [],
+        jumps: [],
+        points: [
+          [-195, 0, -30],
+          [-165, 3, -130],
+          [-60, 5, -170],
+          [60, 5, -150],
+          [160, 2, -105],
+          [195, 0, 5],
+          [130, 3, 110],
+          [5, 7, 150],
+          [-130, 2, 115]
+        ]
+      },
+      {
+        id: "sunset-valley",
+        name: "SUNSET VALLEY",
+        difficulty: "easy",
+        description: "Rolling hills, a practice jump, and a tunnel.",
+        width: 22,
+        sky: 0xd4a17f,
+        ground: 0x715a49,
+        edge: 0xffd36a,
+        tunnels: [[0.57, 0.65]],
+        jumps: [
+          { at: 0.20, gap: 32, ramp: 42, height: 3 }
+        ],
+        points: [
+          [-185, 0, -35],
+          [-145, 7, -145],
+          [-40, 15, -175],
+          [70, 12, -140],
+          [170, 5, -120],
+          [190, 3, 0],
+          [125, 10, 125],
+          [10, 17, 160],
+          [-130, 4, 120]
+        ]
+      },
+      {
+        id: "skyline",
+        name: "SKYLINE HAIRPINS",
+        difficulty: "hard",
+        description: "Tight turns and a long underground tunnel.",
+        width: 19,
+        sky: 0x778799,
+        ground: 0x283844,
+        edge: 0xffce55,
+        tunnels: [[0.38, 0.49]],
+        jumps: [],
+        points: [
+          [-200, 2, -75],
+          [-145, 8, -165],
+          [-30, 18, -175],
+          [55, 24, -100],
+          [145, 18, -175],
+          [200, 8, -80],
+          [125, 4, 5],
+          [195, 12, 100],
+          [95, 20, 175],
+          [-5, 10, 110],
+          [-120, 4, 175],
+          [-185, 2, 80]
+        ]
+      },
+      {
+        id: "vortex",
+        name: "VORTEX CROSSWIND",
+        difficulty: "hard",
+        description: "Twists, a dark tunnel, and a big jump.",
+        width: 18,
+        sky: 0x9998b4,
+        ground: 0x414457,
+        edge: 0xb38bff,
+        tunnels: [[0.63, 0.72]],
+        jumps: [
+          { at: 0.25, gap: 55, ramp: 48, height: 4 }
+        ],
+        points: [
+          [-200, 0, -55],
+          [-150, 6, -165],
+          [-45, 12, -180],
+          [50, 18, -115],
+          [150, 22, -180],
+          [200, 10, -70],
+          [120, 3, 10],
+          [180, 8, 115],
+          [75, 18, 175],
+          [-25, 10, 105],
+          [-140, 4, 165],
+          [-190, 0, 70]
+        ]
+      },
+      {
+        id: "mountain-pass",
+        name: "MOUNTAIN PASS",
+        difficulty: "hard",
+        description: "Steep climbs, a mountain tunnel, and a jump.",
+        width: 18,
+        sky: 0x8aafbd,
+        ground: 0x40534e,
+        edge: 0x79f4b9,
+        tunnels: [[0.20, 0.30]],
+        jumps: [
+          { at: 0.58, gap: 58, ramp: 50, height: 4 }
+        ],
+        points: [
+          [-200, 0, -45],
+          [-175, 12, -150],
+          [-80, 28, -185],
+          [10, 38, -120],
+          [115, 45, -180],
+          [190, 35, -90],
+          [130, 27, 5],
+          [190, 19, 110],
+          [75, 12, 170],
+          [-25, 6, 110],
+          [-145, 2, 165],
+          [-190, 0, 65]
+        ]
+      },
+      {
+        id: "inferno",
+        name: "INFERNO SPINE",
+        difficulty: "extreme",
+        description: "Narrow roads, deep darkness, and a huge jump.",
+        width: 16,
+        sky: 0x914b45,
+        ground: 0x391f24,
+        edge: 0xff584f,
+        tunnels: [[0.38, 0.50]],
+        jumps: [
+          { at: 0.17, gap: 72, ramp: 55, height: 5 }
+        ],
+        points: [
+          [-210, 3, -65],
+          [-160, 18, -180],
+          [-55, 33, -185],
+          [35, 48, -110],
+          [130, 48, -180],
+          [205, 35, -95],
+          [125, 24, 0],
+          [190, 15, 105],
+          [85, 9, 180],
+          [-25, 5, 105],
+          [-145, 2, 175],
+          [-200, 3, 75]
+        ]
+      },
+      {
+        id: "glacier",
+        name: "GLACIER DROP",
+        difficulty: "extreme",
+        description: "High climbs, two jumps, and an ice tunnel.",
+        width: 16,
+        sky: 0xc0dce5,
+        ground: 0x819da5,
+        edge: 0xd9fbff,
+        tunnels: [[0.43, 0.52]],
+        jumps: [
+          { at: 0.18, gap: 65, ramp: 52, height: 5 },
+          { at: 0.71, gap: 60, ramp: 50, height: 5 }
+        ],
+        points: [
+          [-210, 5, -55],
+          [-175, 20, -165],
+          [-75, 40, -185],
+          [20, 55, -115],
+          [125, 50, -180],
+          [200, 40, -90],
+          [130, 30, 10],
+          [185, 20, 115],
+          [70, 10, 175],
+          [-30, 5, 105],
+          [-145, 2, 170],
+          [-200, 4, 70]
+        ]
+      },
+      {
+        id: "apex-chaos",
+        name: "APEX CHAOS",
+        difficulty: "extreme",
+        description: "Two giant gaps and a very dark tunnel.",
+        width: 15,
+        sky: 0x594e82,
+        ground: 0x2c2440,
+        edge: 0xf278ff,
+        tunnels: [[0.48, 0.59]],
+        jumps: [
+          { at: 0.17, gap: 76, ramp: 56, height: 5 },
+          { at: 0.72, gap: 70, ramp: 54, height: 5 }
+        ],
+        points: [
+          [-210, 3, -65],
+          [-155, 18, -175],
+          [-65, 32, -190],
+          [10, 48, -100],
+          [110, 55, -180],
+          [195, 43, -135],
+          [140, 30, -35],
+          [205, 22, 45],
+          [130, 15, 130],
+          [55, 12, 180],
+          [-25, 9, 100],
+          [-145, 4, 175],
+          [-200, 3, 80]
+        ]
+      }
+    ];
+
+    const AI_SETTINGS = {
+      easy: [68, 78],
+      medium: [86, 96],
+      hard: [96, 106]
+    };
+
+    const f1Cars = [];
+
+    const state = {
+      screen: "loading",
+      mode: "race",
+      difficulty: "easy",
+      track: TRACKS[0],
+      carIndex: 0,
+      cameraMode: 0,
+      racePhase: "idle",
+
+      currentTrack: null,
+      activeDefinition: null,
+      customCurve: null,
+      trackLength: 1,
+      trackWidth: 20,
+      jumps: [],
+      tunnels: [],
+
+      distance: 0,
+      speed: 0,
+      lateral: 0,
+      lateralVelocity: 0,
+      steer: 0,
+      steerTarget: 0,
+
+      boostSeconds: 0,
+      elapsed: 0,
+      lap: 1,
+      totalLaps: 3,
+      countdown: 0,
+
+      player: null,
+      ai: [],
+      pickups: [],
+
+      held: {
+        gas: false,
+        brake: false,
+        boost: false
+      },
+
+      airborne: false,
+      airY: 0,
+      airVelocity: 0,
+      airJump: null,
+      resets: 0,
+
+      crashCount: 0,
+      crashCooldown: 0,
+      touchingTrackEdge: false,
+
+      tunnelDarkness: 0,
+
+      builderPieces: [],
+      builderPoints: [],
+      builderEnd: new THREE.Vector3(),
+      builderClosed: false
+    };
+
+    let trackGroup = null;
+    let vehicleGroup = null;
+    let gantry = null;
+    let builderGroup = null;
+    let startLights = [];
+
+    let previewRenderer = null;
+    let previewScene = null;
+    let previewCamera = null;
+    let previewCar = null;
+
+    let animationFrame = 0;
+    let lastFrame = 0;
+    let lastPreviewRender = 0;
+    let noticeTimer = null;
+    let wheelPointer = null;
+
+    let celebration = [];
+    let celebrationActive = false;
+
+    let explosionGroup = null;
+    let explosionParticles = [];
+    let explosionTimer = 0;
+
+    const renderer = new THREE.WebGLRenderer({
+      canvas: $("game"),
+      antialias: false,
+      powerPreference: "high-performance"
+    });
+
+    renderer.setPixelRatio(
+      Math.min(window.devicePixelRatio || 1, 1.5)
+    );
+
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
+
+    const scene = new THREE.Scene();
+
+    scene.background = new THREE.Color(0x7899ac);
+    scene.fog = new THREE.Fog(0x7899ac, 180, 900);
+
+    const camera = new THREE.PerspectiveCamera(
+      62,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      2500
+    );
+
+    const ambient = new THREE.AmbientLight(0xffffff, 1.5);
+    scene.add(ambient);
+
+    const sun = new THREE.DirectionalLight(0xffffff, 2);
+    sun.position.set(80, 150, 60);
+    scene.add(sun);
+
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(4000, 4000),
+      new THREE.MeshStandardMaterial({
+        color: 0x253b35,
+        roughness: 1
+      })
+    );
+
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -10;
+    scene.add(ground);
+
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    const builderHit = new THREE.Vector3();
+
+    const outsideFogColor = new THREE.Color();
+    const tunnelFogColor = new THREE.Color(0x050811);
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function randomBetween(min, max) {
+      return min + Math.random() * (max - min);
+    }
+
+    function wrap(value, length) {
+      return ((value % length) + length) % length;
+    }
+
+    function shuffle(items) {
+      const result = [...items];
+
+      for (let i = result.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [result[i], result[j]] = [result[j], result[i]];
+      }
+
+      return result;
+    }
+
+    function showNotice(text, seconds = 2) {
+      $("notice").textContent = text;
+      $("notice").classList.add("show");
+
+      clearTimeout(noticeTimer);
+
+      noticeTimer = setTimeout(() => {
+        $("notice").classList.remove("show");
+      }, seconds * 1000);
+    }
+
+    function showScreen(name) {
+      document.querySelectorAll(".screen").forEach(element => {
+        element.classList.toggle(
+          "active",
+          element.id === name
+        );
+      });
+
+      $("hud").classList.toggle("active", name === "game");
+
+      $("builder-ui").classList.toggle(
+        "active",
+        name === "builder"
+      );
+
+      state.screen = name;
+
+      if (name === "setup-screen") {
+        createPreview();
+        updatePreviewCar();
+        resizePreview();
+      }
+
+      startAnimation();
+    }
+
+    function startAnimation() {
+      if (animationFrame || document.hidden) return;
+
+      lastFrame = performance.now();
+      animationFrame = requestAnimationFrame(animate);
+    }
+
+    function disposeGenerated(root) {
+      if (!root) return;
+
+      scene.remove(root);
+
+      const geometries = new Set();
+      const materials = new Set();
+      const textures = new Set();
+
+      root.traverse(object => {
+        if (object.geometry) {
+          geometries.add(object.geometry);
+        }
+
+        if (object.material) {
+          const list = Array.isArray(object.material)
+            ? object.material
+            : [object.material];
+
+          list.forEach(material => {
+            if (!material) return;
+
+            materials.add(material);
+
+            if (material.map) {
+              textures.add(material.map);
+            }
+          });
+        }
+      });
+
+      geometries.forEach(geometry => geometry.dispose());
+      materials.forEach(material => material.dispose());
+      textures.forEach(texture => texture.dispose());
+    }
+
+    /*
+     * CAR PACK EXTRACTION
+     *
+     * Object_4 and Object_8–Object_17 identify car centers.
+     * Triangles from Object_5–Object_7 and Object_18–Object_20
+     * are assigned to the nearest world-space Z center.
+     */
+
+    function objectNumber(name) {
+      const match = String(name || "").match(/Object_(\d+)/);
+      return match ? Number(match[1]) : -1;
+    }
+
+    function extractCars(root) {
+      root.updateMatrixWorld(true);
+
+      const meshes = [];
+
+      root.traverse(object => {
+        if (
+          object.isMesh &&
+          object.geometry &&
+          object.geometry.attributes.position
+        ) {
+          meshes.push(object);
+        }
+      });
+
+      const coreNumbers = [
+        4, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17
+      ];
+
+      const sharedNumbers = [5, 6, 7, 18, 19, 20];
+
+      const cores = coreNumbers.map(number =>
+        meshes.find(mesh => objectNumber(mesh.name) === number)
+      );
+
+      if (cores.some(mesh => !mesh)) {
+        throw new Error(
+          "The expected car meshes were not found in the model pack."
+        );
+      }
+
+      const centers = cores.map(mesh => {
+        const box = new THREE.Box3().setFromObject(mesh);
+        return box.getCenter(new THREE.Vector3());
+      });
+
+      const buckets = centers.map(() => []);
+      const point = new THREE.Vector3();
+
+      function materialIndexAt(geometry, offset) {
+        if (!geometry.groups || !geometry.groups.length) {
+          return 0;
+        }
+
+        const group = geometry.groups.find(item =>
+          offset >= item.start &&
+          offset < item.start + item.count
+        );
+
+        return group ? group.materialIndex : 0;
+      }
+
+      function addTriangles(mesh, fixedCar = null) {
+        const geometry = mesh.geometry;
+        const position = geometry.attributes.position;
+        const uv = geometry.attributes.uv;
+        const index = geometry.index;
+        const count = index ? index.count : position.count;
+
+        const materials = Array.isArray(mesh.material)
+          ? mesh.material
+          : [mesh.material];
+
+        const grouped = new Map();
+
+        for (let offset = 0; offset + 2 < count; offset += 3) {
+          const vertices = [];
+          const uvs = [];
+          let z = 0;
+
+          for (let corner = 0; corner < 3; corner++) {
+            const vertexIndex = index
+              ? index.getX(offset + corner)
+              : offset + corner;
+
+            point
+              .fromBufferAttribute(position, vertexIndex)
+              .applyMatrix4(mesh.matrixWorld);
+
+            vertices.push(point.x, point.y, point.z);
+            z += point.z;
+
+            if (uv) {
+              uvs.push(
+                uv.getX(vertexIndex),
+                uv.getY(vertexIndex)
+              );
+            }
+          }
+
+          let carIndex = fixedCar;
+
+          if (carIndex === null) {
+            const triangleZ = z / 3;
+            let closest = Infinity;
+
+            centers.forEach((center, candidate) => {
+              const distance = Math.abs(center.z - triangleZ);
+
+              if (distance < closest) {
+                closest = distance;
+                carIndex = candidate;
+              }
+            });
+          }
+
+          const matIndex = materialIndexAt(geometry, offset);
+          const key = `${carIndex}:${matIndex}`;
+
+          if (!grouped.has(key)) {
+            grouped.set(key, {
+              carIndex,
+              material: materials[matIndex] || materials[0],
+              positions: [],
+              uvs: [],
+              hasUV: !!uv
+            });
+          }
+
+          const entry = grouped.get(key);
+          entry.positions.push(...vertices);
+
+          if (uv) {
+            entry.uvs.push(...uvs);
+          }
+        }
+
+        grouped.forEach(entry => {
+          buckets[entry.carIndex].push(entry);
+        });
+      }
+
+      cores.forEach((mesh, index) => {
+        addTriangles(mesh, index);
+      });
+
+      meshes
+        .filter(mesh =>
+          sharedNumbers.includes(objectNumber(mesh.name))
+        )
+        .forEach(mesh => addTriangles(mesh));
+
+      f1Cars.length = 0;
+
+      buckets.forEach((parts, carIndex) => {
+        const model = new THREE.Group();
+        const center = centers[carIndex];
+
+        parts.forEach(part => {
+          const positions = part.positions;
+
+          for (let i = 0; i < positions.length; i += 3) {
+            positions[i] -= center.x;
+            positions[i + 1] -= center.y;
+            positions[i + 2] -= center.z;
+          }
+
+          const geometry = new THREE.BufferGeometry();
+
+          geometry.setAttribute(
+            "position",
+            new THREE.Float32BufferAttribute(positions, 3)
+          );
+
+          if (
+            part.hasUV &&
+            part.uvs.length === positions.length / 3 * 2
+          ) {
+            geometry.setAttribute(
+              "uv",
+              new THREE.Float32BufferAttribute(part.uvs, 2)
+            );
+          }
+
+          geometry.computeVertexNormals();
+
+          const material = part.material
+            ? part.material.clone()
+            : new THREE.MeshStandardMaterial({
+                color: 0xffffff
+              });
+
+          model.add(new THREE.Mesh(geometry, material));
+        });
+
+        if (!model.children.length) {
+          throw new Error(
+            `Car ${carIndex + 1} could not be extracted.`
+          );
+        }
+
+        model.rotation.y = CAR_NOSE_ROTATION;
+
+        const wrapper = new THREE.Group();
+        wrapper.add(model);
+        wrapper.updateMatrixWorld(true);
+
+        let box = new THREE.Box3().setFromObject(wrapper);
+        const size = box.getSize(new THREE.Vector3());
+
+        const scale = 4.5 / Math.max(size.x, size.z, 0.001);
+
+        wrapper.scale.setScalar(scale);
+        wrapper.updateMatrixWorld(true);
+
+        box = new THREE.Box3().setFromObject(wrapper);
+        model.position.y -= box.min.y / scale;
+
+        wrapper.visible = false;
+        f1Cars.push(wrapper);
+      });
+    }
+
+    function loadCarPack() {
+      $("loading-fill").style.width = "0%";
+      $("loading-message").textContent = "Starting download...";
+      $("retry").style.display = "none";
+
+      const loader = new GLTFLoader();
+
+      loader.load(
+        CAR_URL,
+
+        gltf => {
+          try {
+            $("loading-message").textContent =
+              "Preparing 11 car models...";
+
+            extractCars(gltf.scene);
+
+            $("loading-fill").style.width = "100%";
+            $("loading-message").textContent = "Ready";
+
+            updateCarLabel();
+            showScreen("title");
+          } catch (error) {
+            console.error(error);
+
+            $("loading-message").textContent =
+              `${error.message} You can retry the model download.`;
+
+            $("retry").style.display = "inline-flex";
+          }
+        },
+
+        event => {
+          if (event.lengthComputable && event.total > 0) {
+            const percent = Math.min(
+              99,
+              Math.floor(event.loaded / event.total * 100)
+            );
+
+            $("loading-fill").style.width = `${percent}%`;
+
+            $("loading-message").textContent =
+              `Downloading cars: ${percent}%`;
+          } else {
+            $("loading-message").textContent =
+              `Downloading cars: ${(event.loaded / 1048576).toFixed(1)} MB`;
+          }
+        },
+
+        error => {
+          console.error(error);
+
+          $("loading-message").textContent =
+            "The car pack could not be downloaded. Check the connection and retry.";
+
+          $("retry").style.display = "inline-flex";
+        }
+      );
+    }
+
+    $("retry").addEventListener("click", () => {
+      window.location.reload();
+    });
+
+    function updateCarLabel() {
+      $("car-title").textContent = CAR_NAMES[state.carIndex];
+
+      $("car-number").textContent =
+        `CAR ${String(state.carIndex + 1).padStart(2, "0")} / 11`;
+    }
+
+    function createPreview() {
+      if (previewRenderer) return;
+
+      try {
+        previewRenderer = new THREE.WebGLRenderer({
+          canvas: $("car-preview"),
+          alpha: true,
+          antialias: false,
+          powerPreference: "high-performance"
+        });
+
+        previewRenderer.setPixelRatio(
+          Math.min(window.devicePixelRatio || 1, 1.2)
+        );
+
+        previewRenderer.outputColorSpace = THREE.SRGBColorSpace;
+        previewRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+
+        previewScene = new THREE.Scene();
+
+        previewCamera = new THREE.PerspectiveCamera(
+          35,
+          1,
+          0.1,
+          100
+        );
+
+        previewCamera.position.set(6.5, 3.1, 7.5);
+        previewCamera.lookAt(0, 0.7, 0);
+
+        previewScene.add(
+          new THREE.AmbientLight(0xffffff, 1.5)
+        );
+
+        const light = new THREE.DirectionalLight(
+          0xffffff,
+          2
+        );
+
+        light.position.set(5, 8, 5);
+        previewScene.add(light);
+
+        const floor = new THREE.Mesh(
+          new THREE.CircleGeometry(4.5, 32),
+          new THREE.MeshStandardMaterial({
+            color: 0x092331,
+            metalness: 0.45,
+            roughness: 0.55
+          })
+        );
+
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = -0.03;
+        previewScene.add(floor);
+      } catch (error) {
+        console.error(error);
+        showNotice("CAR PREVIEW UNAVAILABLE");
+      }
+    }
+
+    function updatePreviewCar() {
+      if (!previewScene || !f1Cars.length) return;
+
+      if (previewCar) {
+        previewScene.remove(previewCar);
+      }
+
+      previewCar = f1Cars[state.carIndex].clone(true);
+      previewCar.visible = true;
+      previewCar.position.set(0, 0, 0);
+
+      previewScene.add(previewCar);
+    }
+
+    function resizePreview() {
+      if (!previewRenderer || !previewCamera) return;
+
+      const canvas = $("car-preview");
+      const width = Math.max(1, canvas.clientWidth);
+      const height = Math.max(1, canvas.clientHeight);
+
+      previewRenderer.setSize(width, height, false);
+      previewCamera.aspect = width / height;
+      previewCamera.updateProjectionMatrix();
+    }
+
+    function makeCurve(points) {
+      const curve = new THREE.CatmullRomCurve3(
+        points.map(point =>
+          point.isVector3
+            ? point.clone()
+            : new THREE.Vector3(...point)
+        ),
+        true,
+        "centripetal"
+      );
+
+      curve.arcLengthDivisions = 2000;
+      return curve;
+    }
+
+    function drawTrackPreview(canvas, definition) {
+      const context = canvas.getContext("2d");
+      const points = makeCurve(definition.points).getPoints(100);
+
+      const xs = points.map(point => point.x);
+      const zs = points.map(point => point.z);
+
+      const minX = Math.min(...xs);
+      const maxX = Math.max(...xs);
+      const minZ = Math.min(...zs);
+      const maxZ = Math.max(...zs);
+
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.strokeStyle = "#39deff";
+      context.lineWidth = 3;
+      context.shadowColor = "#00baff";
+      context.shadowBlur = 8;
+      context.beginPath();
+
+      points.forEach((point, index) => {
+        const x =
+          15 +
+          (point.x - minX) /
+          Math.max(1, maxX - minX) *
+          170;
+
+        const y =
+          8 +
+          (point.z - minZ) /
+          Math.max(1, maxZ - minZ) *
+          64;
+
+        if (index === 0) {
+          context.moveTo(x, y);
+        } else {
+          context.lineTo(x, y);
+        }
+      });
+
+      context.closePath();
+      context.stroke();
+    }
+
+    function drawDifficultyOptions() {
+      const container = $("difficulty-options");
+      container.innerHTML = "";
+
+      [
+        ["easy", "EASY"],
+        ["hard", "HARD"],
+        ["extreme", "EXTREME"]
+      ].forEach(([id, label]) => {
+        const button = document.createElement("button");
+
+        button.className =
+          "button" +
+          (state.difficulty === id ? " selected" : "");
+
+        button.textContent = label;
+
+        button.addEventListener("click", () => {
+          state.difficulty = id;
+
+          if (state.track.difficulty !== id) {
+            state.track = TRACKS.find(
+              track => track.difficulty === id
+            );
+          }
+
+          drawDifficultyOptions();
+          drawTrackOptions();
+        });
+
+        container.appendChild(button);
+      });
+    }
+
+    function drawTrackOptions() {
+      const container = $("track-options");
+      container.innerHTML = "";
+
+      TRACKS
+        .filter(track => track.difficulty === state.difficulty)
+        .forEach(track => {
+          const button = document.createElement("button");
+
+          button.className =
+            "button track-option" +
+            (state.track.id === track.id ? " selected" : "");
+
+          const preview = document.createElement("canvas");
+          preview.width = 200;
+          preview.height = 80;
+
+          drawTrackPreview(preview, track);
+
+          const label = document.createElement("strong");
+          label.textContent = track.name;
+
+          const tag = document.createElement("span");
+          tag.className = `tag ${track.difficulty}`;
+          tag.textContent = track.difficulty.toUpperCase();
+
+          const description = document.createElement("small");
+          description.textContent = track.description;
+
+          button.append(preview, label, tag, description);
+
+          button.addEventListener("click", () => {
+            state.track = track;
+            drawTrackOptions();
+          });
+
+          container.appendChild(button);
+        });
+    }
+
+    function jumpAt(distance) {
+      const d = wrap(distance, state.trackLength);
+
+      return state.jumps.find(jump =>
+        d >= jump.start && d < jump.end
+      ) || null;
+    }
+
+    function rampHeight(distance) {
+      const d = wrap(distance, state.trackLength);
+
+      for (const jump of state.jumps) {
+        if (
+          d >= jump.start - jump.ramp &&
+          d < jump.start
+        ) {
+          const progress =
+            (d - (jump.start - jump.ramp)) / jump.ramp;
+
+          return jump.height * progress;
+        }
+      }
+
+      return 0;
+    }
+
+    function getTrackFrame(distance) {
+      const normalized =
+        wrap(distance, state.trackLength) /
+        state.trackLength;
+
+      const point = state.currentTrack.getPointAt(normalized);
+
+      const tangent = state.currentTrack
+        .getTangentAt(normalized)
+        .normalize();
+
+      const side = new THREE.Vector3()
+        .crossVectors(
+          tangent,
+          new THREE.Vector3(0, 1, 0)
+        )
+        .normalize();
+
+      if (side.lengthSq() < 0.01) {
+        side.set(1, 0, 0);
+      }
+
+      const up = new THREE.Vector3()
+        .crossVectors(side, tangent)
+        .normalize();
+
+      point.addScaledVector(up, rampHeight(distance));
+
+      return {
+        point,
+        tangent,
+        side,
+        up
+      };
+    }
+
+    function orientObject(
+      object,
+      frame,
+      lateral = 0,
+      height = 0.5
+    ) {
+      object.position
+        .copy(frame.point)
+        .addScaledVector(frame.side, lateral)
+        .addScaledVector(frame.up, height);
+
+      const matrix = new THREE.Matrix4().makeBasis(
+        frame.side,
+        frame.up,
+        frame.tangent.clone().negate()
+      );
+
+      object.quaternion.setFromRotationMatrix(matrix);
+    }
+
+    function trackPoint(distance, lateral, height = 0) {
+      const frame = getTrackFrame(distance);
+
+      return frame.point
+        .clone()
+        .addScaledVector(frame.side, lateral)
+        .addScaledVector(frame.up, height);
+    }
+
+    function addQuad(array, a, b, c, d) {
+      array.push(
+        a.x, a.y, a.z,
+        b.x, b.y, b.z,
+        c.x, c.y, c.z,
+
+        a.x, a.y, a.z,
+        c.x, c.y, c.z,
+        d.x, d.y, d.z
+      );
+    }
+
+    function makeRoadMesh(vertices, material) {
+      const geometry = new THREE.BufferGeometry();
+
+      geometry.setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute(vertices, 3)
+      );
+
+      geometry.computeVertexNormals();
+
+      const mesh = new THREE.Mesh(geometry, material);
+      trackGroup.add(mesh);
+    }
+
+    function buildRoad() {
+      const road = [];
+      const curbsRed = [];
+      const curbsWhite = [];
+
+      const segments = Math.max(
+        500,
+        Math.ceil(state.trackLength / 2.5)
+      );
+
+      const step = state.trackLength / segments;
+      const half = state.trackWidth / 2;
+
+      for (let i = 0; i < segments; i++) {
+        const d0 = i * step;
+        const d1 = (i + 1) * step;
+        const mid = (d0 + d1) / 2;
+
+        if (jumpAt(mid)) continue;
+
+        addQuad(
+          road,
+          trackPoint(d0, -half),
+          trackPoint(d0, half),
+          trackPoint(d1, half),
+          trackPoint(d1, -half)
+        );
+
+        const curb = Math.floor(mid / 8) % 2
+          ? curbsRed
+          : curbsWhite;
+
+        for (const sign of [-1, 1]) {
+          const a = trackPoint(d0, sign * (half - 0.6));
+          const b = trackPoint(d0, sign * half);
+          const c = trackPoint(d1, sign * half);
+          const d = trackPoint(d1, sign * (half - 0.6));
+
+          [a, b, c, d].forEach(point => {
+            point.y += 0.05;
+          });
+
+          addQuad(curb, a, b, c, d);
+        }
+      }
+
+      makeRoadMesh(
+        road,
+        new THREE.MeshStandardMaterial({
+          color: 0x232a30,
+          roughness: 0.88,
+          side: THREE.DoubleSide
+        })
+      );
+
+      makeRoadMesh(
+        curbsRed,
+        new THREE.MeshStandardMaterial({
+          color: 0xdc2530,
+          side: THREE.DoubleSide
+        })
+      );
+
+      makeRoadMesh(
+        curbsWhite,
+        new THREE.MeshStandardMaterial({
+          color: 0xe7e9e7,
+          side: THREE.DoubleSide
+        })
+      );
+    }
+
+    /*
+     * Camera-facing signs keep the text readable from the
+     * player's viewpoint.
+     */
+    function makeSign(text, color = "#c92a43") {
+      const canvas = document.createElement("canvas");
+      canvas.width = 512;
+      canvas.height = 128;
+
+      const context = canvas.getContext("2d");
+
+      context.fillStyle = color;
+      context.fillRect(0, 0, canvas.width, canvas.height);
+
+      context.strokeStyle = "#ffffff";
+      context.lineWidth = 8;
+
+      context.strokeRect(
+        4,
+        4,
+        canvas.width - 8,
+        canvas.height - 8
+      );
+
+      context.fillStyle = "#ffffff";
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.font = "bold 65px Arial, sans-serif";
+
+      context.fillText(
+        text,
+        canvas.width / 2,
+        canvas.height / 2
+      );
+
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+
+      const sign = new THREE.Sprite(
+        new THREE.SpriteMaterial({
+          map: texture,
+          depthTest: true
+        })
+      );
+
+      sign.scale.set(9, 2.25, 1);
+      return sign;
+    }
+
+    /*
+     * Creates continuous tunnel walls and a ceiling following
+     * the road, rather than only separate arches.
+     */
+    function buildDarkTunnel(tunnel, definition) {
+      const half = state.trackWidth / 2 + 1.3;
+      const roofHeight = 9;
+      const wallVertices = [];
+      const roofVertices = [];
+
+      const tunnelLength = tunnel.end - tunnel.start;
+      const segments = Math.max(
+        8,
+        Math.ceil(tunnelLength / 3)
+      );
+
+      for (let i = 0; i < segments; i++) {
+        const d0 =
+          tunnel.start +
+          tunnelLength * i / segments;
+
+        const d1 =
+          tunnel.start +
+          tunnelLength * (i + 1) / segments;
+
+        const mid = (d0 + d1) / 2;
+
+        if (jumpAt(mid)) continue;
+
+        /*
+         * Left wall.
+         */
+        addQuad(
+          wallVertices,
+          trackPoint(d0, -half, 0),
+          trackPoint(d0, -half, roofHeight),
+          trackPoint(d1, -half, roofHeight),
+          trackPoint(d1, -half, 0)
+        );
+
+        /*
+         * Right wall.
+         */
+        addQuad(
+          wallVertices,
+          trackPoint(d0, half, 0),
+          trackPoint(d1, half, 0),
+          trackPoint(d1, half, roofHeight),
+          trackPoint(d0, half, roofHeight)
+        );
+
+        /*
+         * Solid roof.
+         */
+        addQuad(
+          roofVertices,
+          trackPoint(d0, -half, roofHeight),
+          trackPoint(d0, half, roofHeight),
+          trackPoint(d1, half, roofHeight),
+          trackPoint(d1, -half, roofHeight)
+        );
+      }
+
+      makeRoadMesh(
+        wallVertices,
+        new THREE.MeshStandardMaterial({
+          color: 0x182027,
+          roughness: 1,
+          side: THREE.DoubleSide
+        })
+      );
+
+      makeRoadMesh(
+        roofVertices,
+        new THREE.MeshStandardMaterial({
+          color: 0x10161c,
+          roughness: 1,
+          side: THREE.DoubleSide
+        })
+      );
+
+      /*
+       * Sparse illuminated strips provide visual guidance in
+       * the dark. They are emissive markers, not full lighting.
+       */
+      const lampMaterial = new THREE.MeshBasicMaterial({
+        color: definition.edge,
+        toneMapped: false
+      });
+
+      for (
+        let distance = tunnel.start + 8;
+        distance < tunnel.end;
+        distance += 18
+      ) {
+        if (jumpAt(distance)) continue;
+
+        const frame = getTrackFrame(distance);
+        const lamp = new THREE.Mesh(
+          new THREE.BoxGeometry(state.trackWidth * 0.42, 0.12, 0.45),
+          lampMaterial
+        );
+
+        orientObject(lamp, frame, 0, roofHeight - 0.12);
+        trackGroup.add(lamp);
+      }
+
+      const entranceFrame = getTrackFrame(tunnel.start - 10);
+      const sign = makeSign("DARK TUNNEL", "#142a3e");
+
+      sign.position
+        .copy(entranceFrame.point)
+        .addScaledVector(
+          entranceFrame.side,
+          state.trackWidth / 2 + 5
+        )
+        .addScaledVector(entranceFrame.up, 4);
+
+      trackGroup.add(sign);
+    }
+
+    function buildTrackObjects(definition) {
+      const half = state.trackWidth / 2;
+
+      const postGeometry = new THREE.BoxGeometry(
+        0.45,
+        3,
+        0.45
+      );
+
+      const postMaterial = new THREE.MeshStandardMaterial({
+        color: definition.edge,
+        emissive: definition.edge,
+        emissiveIntensity: 0.8
+      });
+
+      for (
+        let distance = 0;
+        distance < state.trackLength;
+        distance += 25
+      ) {
+        if (jumpAt(distance)) continue;
+
+        const frame = getTrackFrame(distance);
+
+        for (const side of [-1, 1]) {
+          const post = new THREE.Mesh(
+            postGeometry,
+            postMaterial
+          );
+
+          post.position
+            .copy(frame.point)
+            .addScaledVector(
+              frame.side,
+              side * (half + 1.5)
+            )
+            .addScaledVector(frame.up, 1.5);
+
+          trackGroup.add(post);
+        }
+      }
+
+      state.tunnels.forEach(tunnel => {
+        buildDarkTunnel(tunnel, definition);
+      });
+
+      state.jumps.forEach(jump => {
+        for (const offset of [35, 12]) {
+          const frame = getTrackFrame(jump.start - offset);
+
+          const sign = makeSign(
+            offset === 35 ? "JUMP AHEAD" : "KEEP SPEED"
+          );
+
+          sign.position
+            .copy(frame.point)
+            .addScaledVector(frame.side, half + 5)
+            .addScaledVector(frame.up, 4);
+
+          trackGroup.add(sign);
+        }
+      });
+    }
+
+    function createGantry() {
+      gantry = new THREE.Group();
+
+      const dark = new THREE.MeshStandardMaterial({
+        color: 0x070b10
+      });
+
+      for (const x of [
+        -state.trackWidth / 2 - 2,
+        state.trackWidth / 2 + 2
+      ]) {
+        const pole = new THREE.Mesh(
+          new THREE.BoxGeometry(0.6, 7, 0.6),
+          dark
+        );
+
+        pole.position.set(x, 3.5, 0);
+        gantry.add(pole);
+      }
+
+      const cross = new THREE.Mesh(
+        new THREE.BoxGeometry(
+          state.trackWidth + 4,
+          0.7,
+          0.8
+        ),
+        dark
+      );
+
+      cross.position.y = 7;
+      gantry.add(cross);
+
+      startLights = [];
+
+      for (let i = 0; i < 5; i++) {
+        const lamp = new THREE.Mesh(
+          new THREE.SphereGeometry(0.33, 10, 8),
+          new THREE.MeshStandardMaterial({
+            color: 0x350000,
+            emissive: 0xff0000,
+            emissiveIntensity: 0
+          })
+        );
+
+        lamp.position.set((i - 2) * 1.4, 6.2, -0.45);
+
+        gantry.add(lamp);
+        startLights.push(lamp);
+      }
+
+      orientObject(gantry, getTrackFrame(10), 0, 0);
+      scene.add(gantry);
+    }
+
+    function buildTrack(curve, definition) {
+      if (trackGroup) {
+        disposeGenerated(trackGroup);
+      }
+
+      state.currentTrack = curve;
+      state.trackLength = curve.getLength();
+      state.trackWidth = definition.width;
+
+      state.jumps = (definition.jumps || []).map(jump => ({
+        ...jump,
+        start: jump.at * state.trackLength,
+        end: jump.at * state.trackLength + jump.gap
+      }));
+
+      state.tunnels = (definition.tunnels || []).map(range => ({
+        start: range[0] * state.trackLength,
+        end: range[1] * state.trackLength
+      }));
+
+      scene.background.setHex(definition.sky);
+      scene.fog.color.setHex(definition.sky);
+      outsideFogColor.setHex(definition.sky);
+      ground.material.color.setHex(definition.ground);
+
+      trackGroup = new THREE.Group();
+      scene.add(trackGroup);
+
+      buildRoad();
+      buildTrackObjects(definition);
+      createGantry();
+    }
+
+    /*
+     * Dim the scene when the player enters a tunnel. Transitions
+     * are smoothed, and the normal lighting returns outside.
+     */
+    function updateTunnelLighting(dt) {
+      if (!state.currentTrack) return;
+
+      const distance = wrap(
+        state.distance,
+        state.trackLength
+      );
+
+      const inside = state.tunnels.some(tunnel =>
+        distance >= tunnel.start &&
+        distance < tunnel.end
+      );
+
+      const target = inside ? 1 : 0;
+
+      state.tunnelDarkness = THREE.MathUtils.damp(
+        state.tunnelDarkness,
+        target,
+        3,
+        dt
+      );
+
+      const darkness = state.tunnelDarkness;
+
+      ambient.intensity = THREE.MathUtils.lerp(
+        1.5,
+        0.32,
+        darkness
+      );
+
+      sun.intensity = THREE.MathUtils.lerp(
+        2,
+        0.12,
+        darkness
+      );
+
+      renderer.toneMappingExposure = THREE.MathUtils.lerp(
+        1.05,
+        0.55,
+        darkness
+      );
+
+      scene.fog.color
+        .copy(outsideFogColor)
+        .lerp(tunnelFogColor, darkness * 0.85);
+
+      scene.fog.near = THREE.MathUtils.lerp(
+        180,
+        42,
+        darkness
+      );
+
+      scene.fog.far = THREE.MathUtils.lerp(
+        900,
+        145,
+        darkness
+      );
+    }
+
+    function resetTunnelLighting() {
+      state.tunnelDarkness = 0;
+      ambient.intensity = 1.5;
+      sun.intensity = 2;
+      renderer.toneMappingExposure = 1.05;
+      scene.fog.near = 180;
+      scene.fog.far = 900;
+      scene.fog.color.copy(outsideFogColor);
+    }
+
+    function makePickup(distance, gold = false) {
+      const mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(0.7, 12, 8),
+        new THREE.MeshStandardMaterial({
+          color: gold ? 0xffc32b : 0x35cfff,
+          emissive: gold ? 0xff9f00 : 0x00aaff,
+          emissiveIntensity: 2
+        })
+      );
+
+      const lateral = randomBetween(
+        -state.trackWidth * 0.25,
+        state.trackWidth * 0.25
+      );
+
+      orientObject(mesh, getTrackFrame(distance), lateral, 1.4);
+      vehicleGroup.add(mesh);
+
+      state.pickups.push({
+        mesh,
+        distance,
+        lateral,
+        value: gold ? 8 : 3,
+        collected: false
+      });
+    }
+
+    function clearRaceObjects() {
+      /*
+       * Car clones share model geometry and materials. Remove
+       * them without disposing those shared resources.
+       */
+      if (vehicleGroup) {
+        scene.remove(vehicleGroup);
+      }
+
+      if (trackGroup) {
+        disposeGenerated(trackGroup);
+      }
+
+      if (gantry) {
+        disposeGenerated(gantry);
+      }
+
+      vehicleGroup = null;
+      trackGroup = null;
+      gantry = null;
+      startLights = [];
+
+      state.player = null;
+      state.ai = [];
+      state.pickups = [];
+      state.tunnels = [];
+
+      resetTunnelLighting();
+    }
+
+    function clearExplosion() {
+      if (!explosionGroup) return;
+
+      scene.remove(explosionGroup);
+
+      explosionGroup.traverse(object => {
+        if (object.geometry) {
+          object.geometry.dispose();
+        }
+
+        if (object.material) {
+          const materials = Array.isArray(object.material)
+            ? object.material
+            : [object.material];
+
+          materials.forEach(material => material.dispose());
+        }
+      });
+
+      explosionGroup = null;
+      explosionParticles = [];
+    }
+
+    function spawnRace(customCurve = null) {
+      clearRaceObjects();
+      stopCelebration();
+      clearExplosion();
+
+      const definition = customCurve
+        ? {
+            id: "custom",
+            name: "CUSTOM TRACK",
+            difficulty: "hard",
+            width: 20,
+            sky: 0x7899ac,
+            ground: 0x253b35,
+            edge: 0x38e4ff,
+            tunnels: [],
+            jumps: []
+          }
+        : state.track;
+
+      state.activeDefinition = definition;
+      state.customCurve = customCurve;
+
+      buildTrack(
+        customCurve || makeCurve(definition.points),
+        definition
+      );
+
+      resetTunnelLighting();
+
+      vehicleGroup = new THREE.Group();
+      scene.add(vehicleGroup);
+
+      state.player = f1Cars[state.carIndex].clone(true);
+      state.player.visible = true;
+      vehicleGroup.add(state.player);
+
+      if (state.mode === "race") {
+        const models = shuffle(
+          Array.from({ length: 11 }, (_, index) => index)
+            .filter(index => index !== state.carIndex)
+        ).slice(0, 5);
+
+        const [minSpeed, maxSpeed] =
+          AI_SETTINGS[$("ai-difficulty").value];
+
+        models.forEach((modelIndex, index) => {
+          const model = f1Cars[modelIndex].clone(true);
+          model.visible = true;
+          vehicleGroup.add(model);
+
+          const lane =
+            (index % 2 ? 1 : -1) *
+            state.trackWidth *
+            0.2;
+
+          state.ai.push({
+            mesh: model,
+            modelIndex,
+            distance: -14 - Math.floor(index / 2) * 8,
+            speed: 0,
+            lane,
+            targetLane: lane,
+            maxSpeed: randomBetween(minSpeed, maxSpeed),
+            mistake: 0,
+            nextMistake: randomBetween(7, 16),
+            finished: false,
+            finishTime: null
+          });
+        });
+      }
+
+      for (let i = 0; i < 12; i++) {
+        const distance =
+          (i + 0.5) / 12 * state.trackLength;
+
+        if (!jumpAt(distance)) {
+          makePickup(distance, i % 4 === 0);
+        }
+      }
+
+      state.distance = 0;
+      state.speed = 0;
+      state.lateral = 0;
+      state.lateralVelocity = 0;
+      state.steer = 0;
+      state.boostSeconds = 0;
+      state.elapsed = 0;
+      state.lap = 1;
+
+      state.totalLaps = clamp(
+        Math.round(Number($("laps").value) || 3),
+        1,
+        50
+      );
+
+      $("laps").value = state.totalLaps;
+
+      state.countdown = 0;
+      state.racePhase = "countdown";
+
+      state.airborne = false;
+      state.airY = 0;
+      state.airVelocity = 0;
+      state.airJump = null;
+      state.resets = 0;
+
+      state.crashCount = 0;
+      state.crashCooldown = 0;
+      state.touchingTrackEdge = false;
+
+      clearControls();
+
+      const frame = getTrackFrame(0);
+      orientObject(state.player, frame, 0, 0.5);
+
+      camera.position
+        .copy(frame.point)
+        .addScaledVector(frame.tangent, -12)
+        .addScaledVector(frame.up, 6);
+
+      showScreen("game");
+      showNotice("GET READY", 1.5);
+    }
+
+    function crossed(previous, current, target) {
+      if (current <= previous) return false;
+
+      const lap = Math.floor(previous / state.trackLength);
+      const nextTarget = lap * state.trackLength + target;
+
+      return (
+        (
+          previous < nextTarget &&
+          current >= nextTarget
+        ) ||
+        (
+          previous < nextTarget + state.trackLength &&
+          current >= nextTarget + state.trackLength
+        )
+      );
+    }
+
+    function resetAtJump(jump) {
+      const lap = Math.floor(
+        state.distance / state.trackLength
+      );
+
+      state.distance =
+        lap * state.trackLength +
+        Math.max(0, jump.start - jump.ramp - 12);
+
+      state.speed *= 0.45;
+      state.lateral *= 0.5;
+      state.airborne = false;
+      state.airY = 0;
+      state.airVelocity = 0;
+      state.airJump = null;
+      state.resets++;
+
+      showNotice("JUMP MISSED — BUILD MORE SPEED", 2.5);
+    }
+
+    function registerCrash() {
+      if (
+        state.racePhase !== "running" ||
+        state.crashCooldown > 0
+      ) {
+        return;
+      }
+
+      state.crashCooldown = 1.2;
+      state.crashCount++;
+
+      if (state.crashCount < 3) {
+        showNotice(
+          `CRASH ${state.crashCount} / 3`,
+          1.4
+        );
+        return;
+      }
+
+      state.crashCount = 3;
+      state.racePhase = "exploding";
+      state.speed = 0;
+
+      clearControls();
+      showNotice("CAR DESTROYED", 2);
+      clearExplosion();
+
+      explosionGroup = new THREE.Group();
+      explosionGroup.position.copy(state.player.position);
+      scene.add(explosionGroup);
+
+      const colors = [
+        0xfff2a3,
+        0xffbf27,
+        0xff671a,
+        0xe52b16
+      ];
+
+      for (let i = 0; i < 70; i++) {
+        const material = new THREE.MeshBasicMaterial({
+          color: colors[i % colors.length],
+          transparent: true,
+          opacity: 1
+        });
+
+        const mesh = new THREE.Mesh(
+          new THREE.SphereGeometry(
+            randomBetween(0.12, 0.45),
+            6,
+            5
+          ),
+          material
+        );
+
+        explosionGroup.add(mesh);
+
+        const life = randomBetween(0.5, 1.5);
+
+        explosionParticles.push({
+          mesh,
+          velocity: new THREE.Vector3(
+            randomBetween(-9, 9),
+            randomBetween(2, 12),
+            randomBetween(-9, 9)
+          ),
+          life,
+          maxLife: life
+        });
+      }
+
+      explosionTimer = 0;
+    }
+
+    function updateExplosion(dt) {
+      if (!explosionGroup) return;
+
+      explosionTimer += dt;
+
+      for (const particle of explosionParticles) {
+        particle.life -= dt;
+
+        particle.mesh.position.addScaledVector(
+          particle.velocity,
+          dt
+        );
+
+        particle.velocity.y -= 9 * dt;
+
+        particle.mesh.material.opacity = Math.max(
+          0,
+          particle.life / particle.maxLife
+        );
+      }
+
+      if (explosionTimer >= 2) {
+        clearExplosion();
+        state.racePhase = "finished";
+
+        $("result-title").classList.remove("win");
+        $("result-title").textContent = "CAR DESTROYED";
+        $("result-eyebrow").textContent = "Three crashes";
+
+        $("result-details").textContent =
+          `Track: ${state.activeDefinition.name}\n` +
+          `Time: ${formatTime(state.elapsed)}\n` +
+          `Track-edge crashes: 3 / 3`;
+
+        showScreen("result-screen");
+      }
+    }
+
+    function updatePlayer(dt) {
+      const boosting =
+        state.held.boost &&
+        state.boostSeconds > 0;
+
+      const maxSpeed = boosting ? 130.5 : 87;
+
+      state.speed += state.held.gas
+        ? 24 * dt
+        : -7 * dt;
+
+      if (state.held.brake) {
+        state.speed -= 40 * dt;
+      }
+
+      state.speed -= state.speed * 0.025 * dt;
+      state.speed = clamp(state.speed, 0, maxSpeed);
+
+      if (boosting) {
+        state.boostSeconds = Math.max(
+          0,
+          state.boostSeconds - dt
+        );
+      }
+
+      const speedRatio = Math.min(1, state.speed / 75);
+      const targetVelocity = state.steer * 18 * speedRatio;
+
+      state.lateralVelocity = THREE.MathUtils.damp(
+        state.lateralVelocity,
+        targetVelocity,
+        3.2,
+        dt
+      );
+
+      state.lateral += state.lateralVelocity * dt;
+
+      const limit = state.trackWidth / 2 - 0.8;
+
+      if (Math.abs(state.lateral) > limit) {
+        state.lateral = Math.sign(state.lateral) * limit;
+        state.lateralVelocity *= -0.2;
+        state.speed *= 0.78;
+
+        if (!state.touchingTrackEdge) {
+          state.touchingTrackEdge = true;
+          registerCrash();
+        }
+      } else if (Math.abs(state.lateral) < limit - 0.5) {
+        state.touchingTrackEdge = false;
+      }
+
+      if (state.racePhase !== "running") return;
+
+      const previous = state.distance;
+      state.distance += state.speed * dt;
+
+      for (const jump of state.jumps) {
+        if (
+          !state.airborne &&
+          crossed(previous, state.distance, jump.start)
+        ) {
+          state.airborne = true;
+          state.airJump = jump;
+
+          const takeoff = getTrackFrame(jump.start - 0.01);
+          const landing = getTrackFrame(jump.end + 0.1);
+
+          state.airY = takeoff.point.y;
+
+          const gravity = 20;
+          const referenceSpeed = 72;
+          const referenceTime = jump.gap / referenceSpeed;
+
+          const heightDifference =
+            landing.point.y - takeoff.point.y;
+
+          const referenceVerticalSpeed =
+            (
+              heightDifference +
+              0.5 * gravity * referenceTime * referenceTime
+            ) / referenceTime;
+
+          const launchRatio = clamp(
+            referenceVerticalSpeed / referenceSpeed,
+            0.08,
+            0.35
+          );
+
+          state.airVelocity = state.speed * launchRatio;
+
+          showNotice("AIRBORNE", 0.8);
+        }
+      }
+
+      if (state.airborne && state.airJump) {
+        const gravity = 20;
+
+        state.airVelocity -= gravity * dt;
+        state.airY += state.airVelocity * dt;
+
+        const frame = getTrackFrame(state.distance);
+        const inGap = jumpAt(state.distance);
+
+        if (inGap && state.airY < frame.point.y - 5) {
+          resetAtJump(state.airJump);
+        } else if (
+          !inGap &&
+          state.airVelocity < 0 &&
+          state.airY <= frame.point.y
+        ) {
+          state.airborne = false;
+          state.airY = 0;
+          state.airVelocity = 0;
+          state.airJump = null;
+
+          showNotice("JUMP CLEARED", 1);
+        }
+      }
+
+      const frame = getTrackFrame(state.distance);
+
+      orientObject(
+        state.player,
+        frame,
+        state.lateral,
+        0.5
+      );
+
+      state.player.rotateY(
+        -state.lateralVelocity * 0.015
+      );
+
+      if (state.airborne) {
+        state.player.position.y = state.airY + 0.5;
+
+        state.player.rotateX(
+          clamp(-state.airVelocity * 0.01, -0.2, 0.2)
+        );
+      }
+
+      /*
+       * There is intentionally no player-versus-AI collision
+       * check here. Touching or overlapping another car does not
+       * reduce speed or register a crash.
+       */
+
+      const newLap =
+        Math.floor(state.distance / state.trackLength) + 1;
+
+      if (newLap > state.lap) {
+        state.lap = newLap;
+
+        state.pickups.forEach(pickup => {
+          pickup.collected = false;
+          pickup.mesh.visible = true;
+        });
+
+        if (state.lap > state.totalLaps) {
+          finishRace();
+          return;
+        }
+
+        showNotice(
+          `LAP ${state.lap} / ${state.totalLaps}`,
+          1.5
+        );
+      }
+
+      const lapDistance = wrap(
+        state.distance,
+        state.trackLength
+      );
+
+      for (const pickup of state.pickups) {
+        if (pickup.collected) continue;
+
+        const delta = Math.abs(
+          lapDistance - pickup.distance
+        );
+
+        if (
+          delta < 4 &&
+          Math.abs(state.lateral - pickup.lateral) < 2
+        ) {
+          pickup.collected = true;
+          pickup.mesh.visible = false;
+
+          state.boostSeconds = Math.min(
+            20,
+            state.boostSeconds + pickup.value
+          );
+
+          showNotice(`BOOST +${pickup.value}s`, 1);
+        }
+      }
+    }
+
+    function updateAI(dt) {
+      for (const ai of state.ai) {
+        if (ai.finished) continue;
+
+        ai.nextMistake -= dt;
+
+        if (ai.nextMistake <= 0) {
+          ai.nextMistake = randomBetween(7, 17);
+          ai.mistake = randomBetween(0.6, 1.6);
+
+          ai.targetLane = randomBetween(
+            -state.trackWidth * 0.3,
+            state.trackWidth * 0.3
+          );
+        }
+
+        if (ai.mistake > 0) {
+          ai.mistake -= dt;
+        }
+
+        const targetSpeed =
+          ai.maxSpeed *
+          (ai.mistake > 0 ? 0.8 : 1);
+
+        /*
+         * AI can still try to move around other cars. This only
+         * changes AI steering; it does not crash the player.
+         */
+        for (const other of [
+          state.player,
+          ...state.ai.map(item => item.mesh)
+        ]) {
+          if (other === ai.mesh || !other) continue;
+
+          const distance = ai.mesh.position.distanceTo(
+            other.position
+          );
+
+          if (distance < 10) {
+            ai.targetLane = ai.lane > 0
+              ? -state.trackWidth * 0.25
+              : state.trackWidth * 0.25;
+          }
+        }
+
+        ai.speed = THREE.MathUtils.damp(
+          ai.speed,
+          targetSpeed,
+          0.75,
+          dt
+        );
+
+        ai.lane = THREE.MathUtils.damp(
+          ai.lane,
+          ai.targetLane,
+          1.3,
+          dt
+        );
+
+        ai.distance += ai.speed * dt;
+
+        if (
+          ai.distance >=
+          state.trackLength * state.totalLaps
+        ) {
+          ai.finished = true;
+          ai.finishTime = state.elapsed;
+        }
+
+        orientObject(
+          ai.mesh,
+          getTrackFrame(ai.distance),
+          ai.lane,
+          0.5
+        );
+      }
+    }
+
+    function getPosition() {
+      if (state.mode !== "race") return 1;
+
+      let position = 1;
+
+      for (const ai of state.ai) {
+        if (ai.finished || ai.distance > state.distance) {
+          position++;
+        }
+      }
+
+      return position;
+    }
+
+    function updateCamera(dt) {
+      if (!state.player) return;
+
+      const frame = getTrackFrame(state.distance);
+
+      const back = state.cameraMode === 0 ? 12 : 22;
+      const height = state.cameraMode === 0 ? 5.4 : 10;
+
+      const targetPosition = state.player.position
+        .clone()
+        .addScaledVector(frame.tangent, -back)
+        .addScaledVector(frame.up, height);
+
+      camera.position.lerp(
+        targetPosition,
+        1 - Math.exp(-5 * dt)
+      );
+
+      const target = state.player.position
+        .clone()
+        .addScaledVector(frame.tangent, 12)
+        .addScaledVector(frame.up, 1);
+
+      camera.up
+        .lerp(frame.up, 1 - Math.exp(-4 * dt))
+        .normalize();
+
+      camera.lookAt(target);
+    }
+
+    function formatTime(seconds) {
+      const minutes = Math.floor(seconds / 60);
+      const remainder = seconds % 60;
+
+      return (
+        `${String(minutes).padStart(2, "0")}:` +
+        remainder.toFixed(1).padStart(4, "0")
+      );
+    }
+
+    function updateHUD() {
+      $("lap").textContent =
+        `LAP ${Math.min(state.lap, state.totalLaps)}/${state.totalLaps}`;
+
+      $("timer").textContent = formatTime(state.elapsed);
+      $("speed").textContent = Math.round(state.speed * 3.6);
+
+      $("gear").textContent = clamp(
+        Math.floor(state.speed / 12) + 1,
+        1,
+        8
+      );
+
+      $("boost-seconds").textContent =
+        `${state.boostSeconds.toFixed(1)}s`;
+
+      $("boost-fill").style.height =
+        `${Math.min(100, state.boostSeconds / 20 * 100)}%`;
+
+      if (state.racePhase === "running") {
+        $("race-status").textContent =
+          state.mode === "race"
+            ? `POSITION ${getPosition()} / 6 · CRASH ${state.crashCount}/3`
+            : `TIME TRIAL · CRASH ${state.crashCount}/3`;
+      } else if (state.racePhase === "exploding") {
+        $("race-status").textContent = "CAR DESTROYED";
+      }
+    }
+
+    function finishRace() {
+      if (state.racePhase === "finished") return;
+
+      state.racePhase = "finished";
+      clearControls();
+
+      const position = getPosition();
+      const won = state.mode === "race" && position === 1;
+      const title = $("result-title");
+
+      title.classList.toggle("win", won);
+
+      title.textContent = won
+        ? "VICTORY!"
+        : state.mode === "trial"
+          ? "TIME TRIAL COMPLETE"
+          : `FINISHED ${position} / 6`;
+
+      $("result-eyebrow").textContent = won
+        ? "You won the race"
+        : "Session complete";
+
+      const lines = [
+        `Track: ${state.activeDefinition.name}`,
+        `Time: ${formatTime(state.elapsed)}`,
+        `Laps: ${state.totalLaps}`,
+        `Track-edge crashes: ${state.crashCount} / 3`,
+        `Jump resets: ${state.resets}`
+      ];
+
+      if (state.mode === "trial") {
+        try {
+          const saved = JSON.parse(
+            localStorage.getItem(STORAGE_KEY) || "{}"
+          );
+
+          saved.records = saved.records || {};
+
+          const key =
+            `${state.activeDefinition.id}:${state.totalLaps}`;
+
+          const old = saved.records[key];
+
+          if (!old || state.elapsed < old) {
+            saved.records[key] = state.elapsed;
+          }
+
+          localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify(saved)
+          );
+
+          lines.push(
+            `Best: ${formatTime(saved.records[key])}`
+          );
+        } catch (error) {
+          console.warn(
+            "Could not save time-trial record:",
+            error
+          );
+        }
+      }
+
+      $("result-details").textContent = lines.join("\n");
+      showScreen("result-screen");
+
+      if (won) {
+        startCelebration();
+      }
+    }
+
+    function resetCar() {
+      if (state.screen !== "game") return;
+      if (state.racePhase !== "running") return;
+
+      if (state.airborne && state.airJump) {
+        resetAtJump(state.airJump);
+        return;
+      }
+
+      state.lateral = 0;
+      state.lateralVelocity = 0;
+      state.speed *= 0.35;
+      state.resets++;
+
+      showNotice("CAR RESET");
+    }
+
+    const keys = new Set();
+
+    function clearControls() {
+      state.held.gas = false;
+      state.held.brake = false;
+      state.held.boost = false;
+      state.steerTarget = 0;
+      keys.clear();
+
+      ["gas", "brake", "boost"].forEach(id => {
+        $(id).classList.remove("pressed");
+      });
+    }
+
+    function setHeldButton(id, key) {
+      const element = $(id);
+      let activePointer = null;
+
+      element.addEventListener("pointerdown", event => {
+        event.preventDefault();
+
+        activePointer = event.pointerId;
+        element.setPointerCapture(event.pointerId);
+
+        state.held[key] = true;
+        element.classList.add("pressed");
+      });
+
+      function release(event) {
+        if (
+          activePointer !== null &&
+          event.pointerId !== activePointer
+        ) {
+          return;
+        }
+
+        activePointer = null;
+        state.held[key] = false;
+        element.classList.remove("pressed");
+      }
+
+      element.addEventListener("pointerup", release);
+      element.addEventListener("pointercancel", release);
+      element.addEventListener("lostpointercapture", release);
+    }
+
+    setHeldButton("gas", "gas");
+    setHeldButton("brake", "brake");
+    setHeldButton("boost", "boost");
+
+    function updateWheel(event) {
+      const rect = $("wheel").getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+
+      state.steerTarget = clamp(
+        (event.clientX - centerX) / (rect.width * 0.42),
+        -1,
+        1
+      );
+    }
+
+    $("wheel").addEventListener("pointerdown", event => {
+      event.preventDefault();
+
+      wheelPointer = event.pointerId;
+      $("wheel").setPointerCapture(event.pointerId);
+
+      updateWheel(event);
+    });
+
+    $("wheel").addEventListener("pointermove", event => {
+      if (event.pointerId === wheelPointer) {
+        updateWheel(event);
+      }
+    });
+
+    function releaseWheel(event) {
+      if (event.pointerId !== wheelPointer) return;
+
+      wheelPointer = null;
+      state.steerTarget = 0;
+    }
+
+    $("wheel").addEventListener("pointerup", releaseWheel);
+    $("wheel").addEventListener("pointercancel", releaseWheel);
+
+    $("wheel").addEventListener("lostpointercapture", () => {
+      wheelPointer = null;
+      state.steerTarget = 0;
+    });
+
+    window.addEventListener("keydown", event => {
+      if (state.screen !== "game") return;
+
+      keys.add(event.code);
+
+      if (
+        [
+          "ArrowUp",
+          "ArrowDown",
+          "ArrowLeft",
+          "ArrowRight",
+          "Space"
+        ].includes(event.code)
+      ) {
+        event.preventDefault();
+      }
+
+      if (event.code === "KeyR" && !event.repeat) {
+        resetCar();
+      }
+
+      if (event.code === "KeyC" && !event.repeat) {
+        state.cameraMode = 1 - state.cameraMode;
+      }
+    });
+
+    window.addEventListener("keyup", event => {
+      keys.delete(event.code);
+    });
+
+    window.addEventListener("blur", clearControls);
+
+    $("camera-button").addEventListener("click", () => {
+      state.cameraMode = 1 - state.cameraMode;
+
+      showNotice(
+        state.cameraMode ? "FAR CAMERA" : "CHASE CAMERA"
+      );
+    });
+
+    $("reset").addEventListener("click", resetCar);
+
+    $("exit").addEventListener("click", () => {
+      clearControls();
+      clearExplosion();
+
+      state.racePhase = "idle";
+      state.customCurve = null;
+
+      clearRaceObjects();
+      showScreen("mode-screen");
+    });
+
+    /*
+     * TRACK BUILDER
+     */
+
+    const GRID = 20;
+
+    function rotateLeft(vector) {
+      return new THREE.Vector3(
+        vector.z,
+        0,
+        -vector.x
+      );
+    }
+
+    function rotateRight(vector) {
+      return new THREE.Vector3(
+        -vector.z,
+        0,
+        vector.x
+      );
+    }
+
+    function rebuildBuilder() {
+      if (builderGroup) {
+        disposeGenerated(builderGroup);
+      }
+
+      builderGroup = new THREE.Group();
+      scene.add(builderGroup);
+
+      const grid = new THREE.GridHelper(
+        500,
+        25,
+        0x148db2,
+        0x174152
+      );
+
+      grid.position.y = 0.02;
+      builderGroup.add(grid);
+
+      let position = new THREE.Vector3(0, 0.2, 0);
+      let direction = new THREE.Vector3(0, 0, -1);
+
+      const points = [position.clone()];
+
+      for (const piece of state.builderPieces) {
+        if (piece === "straight") {
+          for (let i = 1; i <= 8; i++) {
+            points.push(
+              position
+                .clone()
+                .addScaledVector(direction, GRID * i / 8)
+            );
+          }
+
+          position.addScaledVector(direction, GRID);
+        } else {
+          const side = piece === "left"
+            ? rotateLeft(direction)
+            : rotateRight(direction);
+
+          const center = position
+            .clone()
+            .addScaledVector(side, GRID);
+
+          const radialStart = side
+            .clone()
+            .multiplyScalar(-GRID);
+
+          const sign = piece === "left" ? 1 : -1;
+
+          for (let i = 1; i <= 12; i++) {
+            const radial = radialStart
+              .clone()
+              .applyAxisAngle(
+                new THREE.Vector3(0, 1, 0),
+                sign * Math.PI / 2 * i / 12
+              );
+
+            points.push(center.clone().add(radial));
+          }
+
+          position = points[points.length - 1].clone();
+
+          direction = piece === "left"
+            ? rotateLeft(direction)
+            : rotateRight(direction);
+        }
+      }
+
+      position.x = Math.round(position.x / GRID) * GRID;
+      position.z = Math.round(position.z / GRID) * GRID;
+
+      state.builderPoints = points;
+      state.builderEnd = position.clone();
+
+      state.builderClosed =
+        state.builderPieces.length >= 4 &&
+        position.distanceTo(
+          new THREE.Vector3(0, 0.2, 0)
+        ) < 0.5 &&
+        direction.distanceTo(
+          new THREE.Vector3(0, 0, -1)
+        ) < 0.1;
+
+      builderGroup.add(
+        new THREE.Line(
+          new THREE.BufferGeometry().setFromPoints(points),
+          new THREE.LineBasicMaterial({
+            color: 0x48e8ff
+          })
+        )
+      );
+
+      const endpoint = new THREE.Mesh(
+        new THREE.SphereGeometry(2.3, 12, 8),
+        new THREE.MeshBasicMaterial({
+          color: state.builderClosed
+            ? 0x37ff9d
+            : 0xffca35
+        })
+      );
+
+      endpoint.position.copy(position);
+      endpoint.position.y = 1;
+      builderGroup.add(endpoint);
+
+      $("builder-message").textContent =
+        state.builderClosed
+          ? "Loop closed. Ready to race."
+          : `Pieces: ${state.builderPieces.length}. Tap a piece, or drag it onto the glowing endpoint.`;
+
+      camera.position.set(0, 180, 140);
+      camera.up.set(0, 1, 0);
+      camera.lookAt(0, 0, 0);
+    }
+
+    function addBuilderPiece(piece) {
+      if (state.builderClosed) {
+        showNotice("UNDO A PIECE TO EDIT");
+        return;
+      }
+
+      state.builderPieces.push(piece);
+      rebuildBuilder();
+    }
+
+    function pointOnBuilderPlane(clientX, clientY) {
+      pointer.x = clientX / window.innerWidth * 2 - 1;
+      pointer.y = -(clientY / window.innerHeight) * 2 + 1;
+
+      raycaster.setFromCamera(pointer, camera);
+
+      const plane = new THREE.Plane(
+        new THREE.Vector3(0, 1, 0),
+        0
+      );
+
+      return raycaster.ray.intersectPlane(plane, builderHit)
+        ? builderHit
+        : null;
+    }
+
+    document.querySelectorAll(".piece").forEach(button => {
+      let startX = 0;
+      let startY = 0;
+
+      button.addEventListener("pointerdown", event => {
+        event.preventDefault();
+
+        startX = event.clientX;
+        startY = event.clientY;
+
+        button.setPointerCapture(event.pointerId);
+      });
+
+      button.addEventListener("pointerup", event => {
+        const moved = Math.hypot(
+          event.clientX - startX,
+          event.clientY - startY
+        );
+
+        if (moved < 12) {
+          addBuilderPiece(button.dataset.piece);
+          return;
+        }
+
+        const hit = pointOnBuilderPlane(
+          event.clientX,
+          event.clientY
+        );
+
+        if (!hit) return;
+
+        const snapped = new THREE.Vector3(
+          Math.round(hit.x / GRID) * GRID,
+          0.2,
+          Math.round(hit.z / GRID) * GRID
+        );
+
+        if (
+          snapped.distanceTo(state.builderEnd) >
+          GRID * 0.75
+        ) {
+          showNotice("DROP ON THE GLOWING ENDPOINT");
+          return;
+        }
+
+        addBuilderPiece(button.dataset.piece);
+      });
+    });
+
+    $("builder-undo").addEventListener("click", () => {
+      state.builderPieces.pop();
+      rebuildBuilder();
+    });
+
+    $("builder-race").addEventListener("click", () => {
+      if (!state.builderClosed) {
+        showNotice("CLOSE THE TRACK LOOP FIRST");
+        return;
+      }
+
+      const curve = makeCurve(
+        state.builderPoints.slice(0, -1)
+      );
+
+      state.mode = "race";
+
+      if (builderGroup) {
+        disposeGenerated(builderGroup);
+        builderGroup = null;
+      }
+
+      spawnRace(curve);
+    });
+
+    $("builder-back").addEventListener("click", () => {
+      if (builderGroup) {
+        disposeGenerated(builderGroup);
+        builderGroup = null;
+      }
+
+      showScreen("mode-screen");
+    });
+
+    $("start-button").addEventListener("click", () => {
+      showScreen("mode-screen");
+    });
+
+    document.querySelectorAll("[data-mode]").forEach(button => {
+      button.addEventListener("click", () => {
+        state.mode = button.dataset.mode;
+        state.customCurve = null;
+
+        if (state.mode === "builder") {
+          clearRaceObjects();
+          state.builderPieces = [];
+          rebuildBuilder();
+          showScreen("builder");
+        } else {
+          drawDifficultyOptions();
+          drawTrackOptions();
+          updateCarLabel();
+          showScreen("setup-screen");
+        }
+      });
+    });
+
+    $("previous-car").addEventListener("click", () => {
+      state.carIndex = (state.carIndex + 10) % 11;
+      updateCarLabel();
+      updatePreviewCar();
+    });
+
+    $("next-car").addEventListener("click", () => {
+      state.carIndex = (state.carIndex + 1) % 11;
+      updateCarLabel();
+      updatePreviewCar();
+    });
+
+    $("setup-back").addEventListener("click", () => {
+      showScreen("mode-screen");
+    });
+
+    $("race-start").addEventListener("click", () => {
+      spawnRace();
+    });
+
+    $("result-menu").addEventListener("click", () => {
+      stopCelebration();
+      clearExplosion();
+      clearRaceObjects();
+
+      drawDifficultyOptions();
+      drawTrackOptions();
+      showScreen("setup-screen");
+    });
+
+    $("result-retry").addEventListener("click", () => {
+      const custom = state.customCurve;
+      spawnRace(custom);
+    });
+
+    /*
+     * VICTORY EFFECTS
+     */
+
+    const effectsCanvas = $("effects");
+    const effectsContext = effectsCanvas.getContext("2d");
+
+    function resizeEffects() {
+      const ratio = Math.min(
+        window.devicePixelRatio || 1,
+        2
+      );
+
+      effectsCanvas.width =
+        Math.round(window.innerWidth * ratio);
+
+      effectsCanvas.height =
+        Math.round(window.innerHeight * ratio);
+
+      effectsContext.setTransform(
+        ratio,
+        0,
+        0,
+        ratio,
+        0,
+        0
+      );
+    }
+
+    function startCelebration() {
+      celebrationActive = true;
+      celebration = [];
+
+      const colors = [
+        "#ffd36a",
+        "#38e4ff",
+        "#ffffff",
+        "#ff526f",
+        "#ad80ff"
+      ];
+
+      for (let i = 0; i < 180; i++) {
+        celebration.push({
+          x: Math.random() * window.innerWidth,
+          y: -Math.random() * window.innerHeight,
+          vx: randomBetween(-55, 55),
+          vy: randomBetween(45, 170),
+          size: randomBetween(4, 10),
+          rotation: randomBetween(0, Math.PI * 2),
+          spin: randomBetween(-5, 5),
+          color: colors[i % colors.length]
+        });
+      }
+    }
+
+    function stopCelebration() {
+      celebrationActive = false;
+      celebration = [];
+
+      effectsContext.clearRect(
+        0,
+        0,
+        window.innerWidth,
+        window.innerHeight
+      );
+    }
+
+    function updateCelebration(dt) {
+      effectsContext.clearRect(
+        0,
+        0,
+        window.innerWidth,
+        window.innerHeight
+      );
+
+      if (!celebrationActive) return;
+
+      celebration.forEach(particle => {
+        particle.x += particle.vx * dt;
+        particle.y += particle.vy * dt;
+        particle.rotation += particle.spin * dt;
+
+        if (particle.y > window.innerHeight + 20) {
+          particle.y = -20;
+          particle.x = Math.random() * window.innerWidth;
+        }
+
+        effectsContext.save();
+        effectsContext.translate(particle.x, particle.y);
+        effectsContext.rotate(particle.rotation);
+        effectsContext.fillStyle = particle.color;
+
+        effectsContext.fillRect(
+          -particle.size / 2,
+          -particle.size / 3,
+          particle.size,
+          particle.size * 0.65
+        );
+
+        effectsContext.restore();
+      });
+    }
+
+    function resize() {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+
+      renderer.setSize(width, height);
+
+      resizePreview();
+      resizeEffects();
+    }
+
+    window.addEventListener("resize", resize);
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        clearControls();
+
+        if (animationFrame) {
+          cancelAnimationFrame(animationFrame);
+        }
+
+        animationFrame = 0;
+      } else {
+        startAnimation();
+      }
+    });
+
+    function animate(now) {
+      animationFrame = 0;
+
+      if (document.hidden) return;
+
+      const dt = Math.min(
+        (now - lastFrame) / 1000,
+        0.05
+      );
+
+      lastFrame = now;
+
+      if (state.screen === "setup-screen") {
+        if (
+          previewRenderer &&
+          now - lastPreviewRender >= 33
+        ) {
+          if (previewCar) {
+            previewCar.rotation.y += dt * 0.7;
+          }
+
+          previewRenderer.render(
+            previewScene,
+            previewCamera
+          );
+
+          lastPreviewRender = now;
+        }
+      } else if (state.screen === "builder") {
+        renderer.render(scene, camera);
+      } else if (state.screen === "game") {
+        const keyboardSteer =
+          (
+            keys.has("ArrowRight") ||
+            keys.has("KeyD")
+              ? 1
+              : 0
+          ) -
+          (
+            keys.has("ArrowLeft") ||
+            keys.has("KeyA")
+              ? 1
+              : 0
+          );
+
+        const targetSteer = wheelPointer !== null
+          ? state.steerTarget
+          : keyboardSteer;
+
+        state.steer = THREE.MathUtils.damp(
+          state.steer,
+          targetSteer,
+          8,
+          dt
+        );
+
+        $("wheel-inner").style.transform =
+          `rotate(${state.steer * 90}deg)`;
+
+        state.held.gas =
+          keys.has("ArrowUp") ||
+          keys.has("KeyW") ||
+          $("gas").classList.contains("pressed");
+
+        state.held.brake =
+          keys.has("ArrowDown") ||
+          keys.has("KeyS") ||
+          $("brake").classList.contains("pressed");
+
+        state.held.boost =
+          keys.has("Space") ||
+          $("boost").classList.contains("pressed");
+
+        if (state.racePhase === "countdown") {
+          state.countdown += dt;
+
+          for (let i = 0; i < startLights.length; i++) {
+            startLights[i].material.emissiveIntensity =
+              state.countdown >= i * 0.55 + 0.5
+                ? 6
+                : 0;
+          }
+
+          $("race-status").textContent = "START LIGHTS";
+
+          if (state.countdown >= 3.6) {
+            startLights.forEach(light => {
+              light.material.emissiveIntensity = 0;
+            });
+
+            state.racePhase = "running";
+            showNotice("GO!", 1);
+          }
+        } else if (state.racePhase === "running") {
+          state.crashCooldown = Math.max(
+            0,
+            state.crashCooldown - dt
+          );
+
+          state.elapsed += dt;
+
+          updateAI(dt);
+          updatePlayer(dt);
+        } else if (state.racePhase === "exploding") {
+          updateExplosion(dt);
+        }
+
+        if (state.screen === "game") {
+          updateTunnelLighting(dt);
+          updateCamera(dt);
+          updateHUD();
+          renderer.render(scene, camera);
+        }
+      }
+
+      updateCelebration(dt);
+      startAnimation();
+    }
+
+    resizeEffects();
+    drawDifficultyOptions();
+    drawTrackOptions();
+    loadCarPack();
+    startAnimation();
+  </script>
+</body>
+</html>
